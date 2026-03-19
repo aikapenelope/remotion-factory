@@ -1,0 +1,33 @@
+{
+  "name": "remotion-factory",
+  "version": "1.0.0",
+  "description": "AI video factory powered by Remotion + MiniMax + Groq. Renders VideoStoryboard JSON from Agno/NEXUS into MP4.",
+  "scripts": {
+    "dev": "remotion studio",
+    "build": "remotion bundle",
+    "render": "remotion render",
+    "generate": "npx tsx scripts/generate.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ scripts/"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.438",
+    "@remotion/player": "4.0.438",
+    "@remotion/zod-types": "^4.0.438",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "remotion": "4.0.438",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@remotion/eslint-config": "4.0.438",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.57.1"
+  },
+  "packageManager": "npm@10.9.4"
+}
