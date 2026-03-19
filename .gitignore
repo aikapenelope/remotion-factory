@@ -1,0 +1,28 @@
+node_modules/
+out/
+dist/
+.remotion/
+*.mp4
+*.webm
+
+# Generated assets (re-generate from JSON)
+public/assets/images/*.jpg
+public/assets/images/*.jpeg
+public/assets/images/*.png
+public/assets/audio/*.mp3
+public/assets/audio/*.wav
+public/assets/music/*.mp3
+
+# Keep directories
+!public/assets/images/.gitkeep
+!public/assets/audio/.gitkeep
+!public/assets/music/.gitkeep
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+build

@@ -1,0 +1,58 @@
+{
+  "title": "Docflow Promocional",
+  "hook": "Tu clinica aun usa papel?",
+  "language": "es",
+  "total_duration_seconds": 35,
+  "scenes": [
+    {
+      "text": "El 70% de las clinicas en Latinoamerica todavia manejan historias clinicas en papel.",
+      "visual": "Modern medical office with stacks of paper files on a desk, warm lighting, photorealistic, 4K quality",
+      "duration_seconds": 5,
+      "transition": "fade"
+    },
+    {
+      "text": "Esto genera errores, perdida de informacion y horas de trabajo innecesarias.",
+      "visual": "Close-up of a frustrated doctor searching through disorganized paper files, dramatic lighting, cinematic",
+      "duration_seconds": 5,
+      "transition": "slide"
+    },
+    {
+      "text": "Docflow digitaliza todo el flujo de documentos clinicos en minutos.",
+      "visual": "Sleek tablet showing a modern EHR interface with patient records, clean UI design, blue and white color scheme",
+      "duration_seconds": 5,
+      "transition": "zoom"
+    },
+    {
+      "text": "Desde la recepcion hasta el diagnostico, todo conectado y seguro.",
+      "visual": "Split screen showing reception desk on left and doctor reviewing digital records on right, modern hospital, bright",
+      "duration_seconds": 5,
+      "transition": "slide"
+    },
+    {
+      "text": "Cumple con regulaciones de salud y protege los datos de tus pacientes.",
+      "visual": "Digital shield icon protecting medical data, abstract cybersecurity visualization, dark blue background with glowing elements",
+      "duration_seconds": 5,
+      "transition": "fade"
+    },
+    {
+      "text": "Unete a las clinicas que ya transformaron su gestion documental.",
+      "visual": "Happy medical team looking at a large screen with Docflow dashboard, modern clinic environment, warm professional lighting",
+      "duration_seconds": 5,
+      "transition": "fade"
+    },
+    {
+      "text": "Docflow. Tu clinica, sin papel.",
+      "visual": "Docflow logo centered on dark gradient background with subtle medical icons, minimalist branding, accent color #e94560",
+      "duration_seconds": 5,
+      "transition": "fade"
+    }
+  ],
+  "hashtags": ["#Docflow", "#EHR", "#SaludDigital", "#HistoriaClinica", "#Tecnologia", "#Clinicas"],
+  "cta": "Sigue para mas sobre salud digital",
+  "platform": "instagram_reels",
+  "style": {
+    "font": "Inter",
+    "primary_color": "#1a1a2e",
+    "accent_color": "#e94560"
+  }
+}
