@@ -6,6 +6,9 @@
  * all assets: images (MiniMax), voiceover (MiniMax), captions (Groq Whisper),
  * and background music (MiniMax). Outputs a timeline.json for Remotion.
  *
+ * Supports resume: if an asset already exists on disk, it is skipped.
+ * Re-run the same command after a failure to continue where it left off.
+ *
  * Usage:
  *   npx tsx cli/cli.ts generate --input public/content/sample.json
  *   npm run gen -- generate --input public/content/sample.json
@@ -26,7 +29,6 @@ import {
   ContentItemWithDetails,
   StoryMetadataWithDetails,
 } from "../src/lib/types";
-import { v4 as uuidv4 } from "uuid";
 import * as fs from "fs";
 import * as path from "path";
 import { createTimeLineFromStoryWithDetails } from "./timeline";
@@ -77,6 +79,16 @@ class ContentFS {
     fs.writeFileSync(filePath, JSON.stringify(descriptor, null, 2));
   }
 
+  loadDescriptor(): StoryMetadataWithDetails | null {
+    const filePath = path.join(this.getDir(), "descriptor.json");
+    if (!fs.existsSync(filePath)) return null;
+    try {
+      return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    } catch {
+      return null;
+    }
+  }
+
   saveTimeline(timeline: Timeline) {
     const dirPath = this.getDir();
     const filePath = path.join(dirPath, "timeline.json");
@@ -93,6 +105,11 @@ class ContentFS {
     return p;
   }
 
+  /** Deterministic scene ID based on index (enables resume). */
+  getSceneId(index: number): string {
+    return `scene-${String(index).padStart(2, "0")}`;
+  }
+
   getImagePath(uid: string): string {
     const dirPath = this.getDir("images");
     return path.join(dirPath, `${uid}.png`);
@@ -101,6 +118,11 @@ class ContentFS {
   getAudioPath(uid: string): string {
     const dirPath = this.getDir("audio");
     return path.join(dirPath, `${uid}.mp3`);
+  }
+
+  getCaptionsPath(uid: string): string {
+    const dirPath = this.getDir("audio");
+    return path.join(dirPath, `${uid}-captions.json`);
   }
 
   getMusicPath(): string {
@@ -131,7 +153,7 @@ async function generateFromStoryboard(options: GenerateOptions) {
     }
 
     // --- Load storyboard JSON ---
-    let inputPath = options.input;
+    const inputPath = options.input;
     if (!inputPath) {
       console.log(chalk.red("--input <path> is required"));
       process.exit(1);
@@ -151,72 +173,119 @@ async function generateFromStoryboard(options: GenerateOptions) {
       chalk.blue(`Duration: ${storyboard.total_duration_seconds}s\n`),
     );
 
-    // --- Convert storyboard to the template's internal format ---
-    const storyWithDetails: StoryMetadataWithDetails = {
-      shortTitle: storyboard.title,
-      content: [],
-    };
+    const contentFs = new ContentFS(storyboard.title);
 
-    for (const scene of storyboard.scenes) {
-      const contentWithDetails: ContentItemWithDetails = {
-        text: scene.text,
-        imageDescription: scene.visual,
-        uid: uuidv4(),
-        audioTimestamps: {
-          characters: [],
-          characterStartTimesSeconds: [],
-          characterEndTimesSeconds: [],
-        },
+    // --- Try to load existing descriptor (for resume) ---
+    let storyWithDetails: StoryMetadataWithDetails;
+    const existing = contentFs.loadDescriptor();
+
+    if (existing && existing.content.length === storyboard.scenes.length) {
+      console.log(chalk.yellow("Resuming from previous run...\n"));
+      storyWithDetails = existing;
+    } else {
+      // Fresh run: build descriptor with deterministic scene IDs.
+      storyWithDetails = {
+        shortTitle: storyboard.title,
+        content: [],
       };
-      storyWithDetails.content.push(contentWithDetails);
+
+      for (let i = 0; i < storyboard.scenes.length; i++) {
+        const scene = storyboard.scenes[i];
+        const contentWithDetails: ContentItemWithDetails = {
+          text: scene.text,
+          imageDescription: scene.visual,
+          uid: contentFs.getSceneId(i),
+          audioTimestamps: {
+            characters: [],
+            characterStartTimesSeconds: [],
+            characterEndTimesSeconds: [],
+          },
+        };
+        storyWithDetails.content.push(contentWithDetails);
+      }
     }
 
-    const contentFs = new ContentFS(storyboard.title);
     contentFs.saveDescriptor(storyWithDetails);
 
-    // --- Generate images + voiceover + captions ---
-    const totalSteps = storyWithDetails.content.length * 3; // image + voice + transcribe
-    const imagesSpinner = ora("Generating assets...").start();
+    // --- Generate images + voiceover + captions (with resume) ---
+    const totalSteps = storyWithDetails.content.length * 3;
+    const spinner = ora("Generating assets...").start();
+    let skipped = 0;
 
     for (let i = 0; i < storyWithDetails.content.length; i++) {
       const storyItem = storyWithDetails.content[i];
       const step = i * 3;
-
-      // Image
-      imagesSpinner.text = `[${step + 1}/${totalSteps}] Image: ${storyItem.imageDescription.slice(0, 50)}...`;
-      await generateAiImage({
-        prompt: storyItem.imageDescription,
-        path: contentFs.getImagePath(storyItem.uid),
-        onRetry: (attempt) => {
-          imagesSpinner.text = `[${step + 1}/${totalSteps}] Image (retry ${attempt})...`;
-        },
-      });
-
-      // Voiceover
-      imagesSpinner.text = `[${step + 2}/${totalSteps}] Voice: "${storyItem.text.slice(0, 50)}..."`;
+      const imagePath = contentFs.getImagePath(storyItem.uid);
       const audioPath = contentFs.getAudioPath(storyItem.uid);
-      await generateVoice(storyItem.text, "", audioPath);
+      const captionsPath = contentFs.getCaptionsPath(storyItem.uid);
 
-      // Transcribe for timestamps
-      imagesSpinner.text = `[${step + 3}/${totalSteps}] Transcribing scene ${i + 1}...`;
-      const timings = await transcribeForTimestamps(
-        audioPath,
-        storyItem.text,
-        storyboard.language,
-      );
-      storyItem.audioTimestamps = timings;
+      // --- Image ---
+      if (fs.existsSync(imagePath)) {
+        spinner.text = `[${step + 1}/${totalSteps}] Image: exists, skipping`;
+        skipped++;
+      } else {
+        spinner.text = `[${step + 1}/${totalSteps}] Image: ${storyItem.imageDescription.slice(0, 50)}...`;
+        await generateAiImage({
+          prompt: storyItem.imageDescription,
+          path: imagePath,
+          onRetry: (attempt) => {
+            spinner.text = `[${step + 1}/${totalSteps}] Image (retry ${attempt})...`;
+          },
+        });
+      }
+
+      // --- Voiceover ---
+      if (fs.existsSync(audioPath)) {
+        spinner.text = `[${step + 2}/${totalSteps}] Voice: exists, skipping`;
+        skipped++;
+      } else {
+        spinner.text = `[${step + 2}/${totalSteps}] Voice: "${storyItem.text.slice(0, 50)}..."`;
+        await generateVoice(storyItem.text, "", audioPath);
+      }
+
+      // --- Transcribe for timestamps ---
+      const hasTimestamps =
+        storyItem.audioTimestamps.characterEndTimesSeconds.length > 0;
+
+      if (hasTimestamps && fs.existsSync(captionsPath)) {
+        spinner.text = `[${step + 3}/${totalSteps}] Captions: exists, skipping`;
+        skipped++;
+      } else {
+        spinner.text = `[${step + 3}/${totalSteps}] Transcribing scene ${i + 1}...`;
+        const timings = await transcribeForTimestamps(
+          audioPath,
+          storyItem.text,
+          storyboard.language,
+        );
+        storyItem.audioTimestamps = timings;
+        // Save captions to disk for resume.
+        fs.writeFileSync(captionsPath, JSON.stringify(timings, null, 2));
+      }
+
+      // Save progress after each scene.
+      contentFs.saveDescriptor(storyWithDetails);
     }
 
-    contentFs.saveDescriptor(storyWithDetails);
-    imagesSpinner.succeed(chalk.green("Assets generated!"));
+    if (skipped > 0) {
+      spinner.succeed(
+        chalk.green(`Assets generated! (${skipped} skipped, already existed)`),
+      );
+    } else {
+      spinner.succeed(chalk.green("Assets generated!"));
+    }
 
     // --- Background music ---
-    const musicSpinner = ora("Generating background music...").start();
-    await generateMusic(
-      "Corporate tech, modern, uplifting, clean, background music for a promotional video, subtle electronic beats, inspiring, professional",
-      contentFs.getMusicPath(),
-    );
-    musicSpinner.succeed(chalk.green("Background music generated!"));
+    const musicPath = contentFs.getMusicPath();
+    if (fs.existsSync(musicPath)) {
+      console.log(chalk.yellow("Background music: exists, skipping"));
+    } else {
+      const musicSpinner = ora("Generating background music...").start();
+      await generateMusic(
+        "Corporate tech, modern, uplifting, clean, background music for a promotional video, subtle electronic beats, inspiring, professional",
+        musicPath,
+      );
+      musicSpinner.succeed(chalk.green("Background music generated!"));
+    }
 
     // --- Build timeline ---
     const finalSpinner = ora("Building timeline...").start();
