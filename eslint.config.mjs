@@ -1,7 +1,3 @@
-// @ts-check
-import tseslint from "typescript-eslint";
+import { config } from "@remotion/eslint-config-flat";
 
-export default tseslint.config(
-  { ignores: ["build/", "out/", "node_modules/"] },
-  ...tseslint.configs.recommended,
-);
+export default config;

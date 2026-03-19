@@ -1,11 +1,6 @@
-/**
- * Video configuration constants.
- * Vertical format (9:16) for Instagram Reels / TikTok.
- */
-export const VIDEO_CONFIG = {
-  width: 1080,
-  height: 1920,
-  fps: 30,
-  /** Default duration used for Composition registration (overridden at render time). */
-  defaultDurationFrames: 30 * 45, // 45 seconds
-} as const;
+export const FPS = 30;
+export const INTRO_DURATION = 1 * FPS;
+// MiniMax Image-01 aspect ratio for vertical video (Reels/TikTok).
+// Used in cli/service.ts as "9:16" and in Background.tsx for scale math.
+export const IMAGE_WIDTH = 9;
+export const IMAGE_HEIGHT = 16;

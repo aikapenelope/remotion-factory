@@ -1,22 +1,19 @@
 node_modules/
 out/
 dist/
+build/
 .remotion/
 *.mp4
 *.webm
 
-# Generated assets (re-generate from JSON)
-public/assets/images/*.jpg
-public/assets/images/*.jpeg
-public/assets/images/*.png
-public/assets/audio/*.mp3
-public/assets/audio/*.wav
-public/assets/music/*.mp3
+# Generated assets (re-generate via CLI)
+public/content/*/images/
+public/content/*/audio/
+public/content/*/descriptor.json
+public/content/*/timeline.json
 
-# Keep directories
-!public/assets/images/.gitkeep
-!public/assets/audio/.gitkeep
-!public/assets/music/.gitkeep
+# Keep sample storyboard
+!public/content/sample.json
 
 # Environment
 .env
@@ -25,4 +22,3 @@ public/assets/music/*.mp3
 # OS
 .DS_Store
 Thumbs.db
-build
