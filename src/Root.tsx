@@ -1,25 +1,42 @@
-import { Composition } from "remotion";
-import { VideoComposition } from "./components/VideoComposition";
-import { videoFactorySchema } from "./lib/composition-schema";
-import { VIDEO_CONFIG } from "./lib/constants";
+import { Composition, getStaticFiles } from "remotion";
+import { AIVideo, aiVideoSchema } from "./components/AIVideo";
+import { FPS, INTRO_DURATION } from "./lib/constants";
+import { getTimelinePath, loadTimelineFromFile } from "./lib/utils";
 
-/**
- * Remotion Root: registers all compositions available for rendering.
- * The main composition reads a VideoStoryboard JSON and renders scenes.
- */
 export const RemotionRoot: React.FC = () => {
+  const staticFiles = getStaticFiles();
+  const timelines = staticFiles
+    .filter((file) => file.name.endsWith("timeline.json"))
+    .map((file) => file.name.split("/")[1]);
+
   return (
-    <Composition
-      id="VideoFactory"
-      component={VideoComposition}
-      durationInFrames={VIDEO_CONFIG.defaultDurationFrames}
-      fps={VIDEO_CONFIG.fps}
-      width={VIDEO_CONFIG.width}
-      height={VIDEO_CONFIG.height}
-      schema={videoFactorySchema}
-      defaultProps={{
-        storyboardPath: "content/sample.json",
-      }}
-    />
+    <>
+      {timelines.map((storyName) => (
+        <Composition
+          id={storyName}
+          component={AIVideo}
+          fps={FPS}
+          width={1080}
+          height={1920}
+          schema={aiVideoSchema}
+          defaultProps={{
+            timeline: null,
+          }}
+          calculateMetadata={async ({ props }) => {
+            const { lengthFrames, timeline } = await loadTimelineFromFile(
+              getTimelinePath(storyName),
+            );
+
+            return {
+              durationInFrames: lengthFrames + INTRO_DURATION,
+              props: {
+                ...props,
+                timeline,
+              },
+            };
+          }}
+        />
+      ))}
+    </>
   );
 };
