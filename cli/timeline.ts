@@ -22,11 +22,18 @@ export const createTimeLineFromStoryWithDetails = (
   for (let i = 0; i < storyWithDetails.content.length; i++) {
     const content = storyWithDetails.content[i];
 
-    const lenMs = Math.ceil(
-      content.audioTimestamps.characterEndTimesSeconds[
-        content.audioTimestamps.characterEndTimesSeconds.length - 1
-      ] * 1000,
-    );
+    // Calculate scene duration from audio timestamps.
+    // Fallback: estimate from text length (~150 words/min spoken Spanish).
+    const endTimes = content.audioTimestamps.characterEndTimesSeconds;
+    let lenMs: number;
+    if (endTimes.length > 0 && endTimes[endTimes.length - 1] > 0) {
+      lenMs = Math.ceil(endTimes[endTimes.length - 1] * 1000);
+    } else {
+      // Fallback: ~10 chars per second for spoken Spanish.
+      lenMs = Math.max(2000, Math.ceil((content.text.length / 10) * 1000));
+    }
+    // Ensure minimum duration of 1 second (30 frames at 30fps).
+    lenMs = Math.max(lenMs, 1000);
 
     const bgElem: BackgroundElement = {
       startMs: durationMs,
@@ -44,14 +51,30 @@ export const createTimeLineFromStoryWithDetails = (
       audioUrl: content.uid,
     });
 
-    // hadnle text word by word
-    const words = content.text.split(" ");
+    // Handle text word by word (only if timestamps exist).
     const {
       characterStartTimesSeconds: character_start_times_seconds,
       characterEndTimesSeconds: character_end_times_seconds,
     } = content.audioTimestamps;
 
+    // Skip word-level subtitle timing if no timestamps available.
+    if (character_start_times_seconds.length === 0 || character_end_times_seconds.length === 0) {
+      // Add a single subtitle for the entire scene instead.
+      timeline.text.push({
+        startMs: durationMs,
+        endMs: durationMs + lenMs,
+        text: content.text,
+        position: "center",
+        animations: getTextAnimations(),
+      });
+      durationMs += lenMs;
+      zoomIn = !zoomIn;
+      continue;
+    }
+
     const MaxSentenseSizeChars = 14;
+
+    const words = content.text.split(" ");
 
     let currentText = "";
     let currentStartMs = character_start_times_seconds[0] * 1000 + durationMs;
