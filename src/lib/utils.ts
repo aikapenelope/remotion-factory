@@ -12,7 +12,8 @@ export const loadTimelineFromFile = async (filename: string) => {
     timeline.elements.length > 0
       ? timeline.elements[timeline.elements.length - 1].endMs / 1000
       : 0;
-  const lengthFrames = Math.floor(lengthMs * FPS);
+  // Ensure at least 1 frame so Remotion doesn't throw on empty/broken timelines.
+  const lengthFrames = Math.max(1, Math.floor(lengthMs * FPS));
 
   return { timeline, lengthFrames };
 };
@@ -26,8 +27,10 @@ export const calculateFrameTiming = (
 
   const startFrame =
     (startMs * FPS) / 1000 + (addIntroOffset ? INTRO_DURATION : 0);
-  const duration =
+  const rawDuration =
     ((endMs - startMs) * FPS) / 1000 + (includeIntro ? INTRO_DURATION : 0);
+  // Ensure minimum 1 frame to prevent Remotion "durationInFrames must be positive" error.
+  const duration = Math.max(1, Math.round(rawDuration));
 
   return { startFrame, duration };
 };
